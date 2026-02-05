@@ -4,6 +4,7 @@ import { WebSocketServer } from 'ws';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -118,6 +119,282 @@ app.post('/api/upload-audio', express.raw({ type: 'audio/*', limit: '100mb' }), 
   const dest = join(PROJECT_DIR, `audio.${ext}`);
   writeFileSync(dest, req.body);
   res.json({ path: `audio.${ext}` });
+});
+
+// --- Suno API proxy ---
+const SUNO_API = 'https://studio-api.prod.suno.com';
+
+function getSunoToken() {
+  const cookieFile = join(__dirname, '.suno-cookie');
+  if (!existsSync(cookieFile)) return null;
+  const cookie = readFileSync(cookieFile, 'utf-8').trim();
+  const match = cookie.match(/__session=([^;]+)/);
+  if (match) return match[1];
+  if (cookie.startsWith('eyJ')) return cookie;
+  return null;
+}
+
+// List Suno songs
+app.get('/api/suno/songs', async (req, res) => {
+  const token = getSunoToken();
+  if (!token) return res.status(401).json({ error: 'No Suno cookie. Save to .suno-cookie' });
+
+  const page = req.query.page || 0;
+  try {
+    const resp = await fetch(`${SUNO_API}/api/feed/v2?page=${page}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json'
+      }
+    });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: `Suno API: ${resp.status}` });
+    }
+    const data = await resp.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get single Suno song details
+app.get('/api/suno/song/:id', async (req, res) => {
+  const token = getSunoToken();
+  if (!token) return res.status(401).json({ error: 'No Suno cookie' });
+
+  try {
+    const resp = await fetch(`${SUNO_API}/api/clip/${req.params.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json'
+      }
+    });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ error: `Suno API: ${resp.status}` });
+    }
+    res.json(await resp.json());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Download and select a Suno song
+app.post('/api/suno/select/:id', async (req, res) => {
+  const token = getSunoToken();
+  if (!token) return res.status(401).json({ error: 'No Suno cookie' });
+
+  try {
+    const resp = await fetch(`${SUNO_API}/api/clip/${req.params.id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json'
+      }
+    });
+    if (!resp.ok) throw new Error(`Suno API: ${resp.status}`);
+    const data = await resp.json();
+
+    if (!data.audio_url) throw new Error('No audio URL');
+
+    // Download audio
+    const audioResp = await fetch(data.audio_url);
+    const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
+    writeFileSync(join(PROJECT_DIR, 'audio.mp3'), audioBuffer);
+
+    // Download cover if exists
+    if (data.image_url) {
+      const imgResp = await fetch(data.image_url);
+      const imgBuffer = Buffer.from(await imgResp.arrayBuffer());
+      mkdirSync(join(PROJECT_DIR, 'style-refs'), { recursive: true });
+      writeFileSync(join(PROJECT_DIR, 'style-refs', 'suno-cover.jpg'), imgBuffer);
+    }
+
+    // Update project
+    const projectFile = join(PROJECT_DIR, 'project.json');
+    const project = existsSync(projectFile)
+      ? JSON.parse(readFileSync(projectFile, 'utf-8'))
+      : {};
+
+    project.title = data.title || 'Untitled';
+    project.artist = 'Suno AI';
+    project.style = data.metadata?.tags || '';
+    project.lyrics = data.metadata?.prompt || '';
+    project.duration = Math.round(data.duration) || null;
+    project.audioFile = 'audio.mp3';
+    project.sunoId = req.params.id;
+    project.stage = 'setup';
+
+    writeFileSync(projectFile, JSON.stringify(project, null, 2));
+    broadcast({ type: 'project-updated', data: project });
+
+    res.json({ ok: true, project });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Pipeline runners ---
+
+// Run transcription (Whisper)
+app.post('/api/pipeline/transcribe', async (req, res) => {
+  const audioFile = join(PROJECT_DIR, 'audio.mp3');
+  if (!existsSync(audioFile)) {
+    const wavFile = join(PROJECT_DIR, 'audio.wav');
+    if (!existsSync(wavFile)) {
+      return res.status(400).json({ error: 'No audio file. Select a song first.' });
+    }
+  }
+
+  broadcast({ type: 'pipeline-status', stage: 'transcribe', status: 'running', message: 'Starting Whisper transcription...' });
+
+  // Use the venv Python with faster-whisper installed
+  const venvPython = join(__dirname, '.venv', 'bin', 'python3');
+  const pythonCmd = existsSync(venvPython) ? venvPython : 'python3';
+
+  const proc = spawn(pythonCmd, [join(__dirname, 'pipeline', 'transcribe.py')], {
+    cwd: __dirname,
+    env: { ...process.env }
+  });
+
+  let stdout = '';
+  let stderr = '';
+
+  proc.stdout.on('data', (data) => {
+    stdout += data.toString();
+    broadcast({ type: 'pipeline-log', stage: 'transcribe', message: data.toString() });
+  });
+
+  proc.stderr.on('data', (data) => {
+    stderr += data.toString();
+    broadcast({ type: 'pipeline-log', stage: 'transcribe', message: data.toString() });
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0) {
+      // Update project stage
+      const projectFile = join(PROJECT_DIR, 'project.json');
+      if (existsSync(projectFile)) {
+        const project = JSON.parse(readFileSync(projectFile, 'utf-8'));
+        project.stage = 'transcribed';
+        writeFileSync(projectFile, JSON.stringify(project, null, 2));
+        broadcast({ type: 'project-updated', data: project });
+      }
+      broadcast({ type: 'pipeline-status', stage: 'transcribe', status: 'done', message: 'Transcription complete!' });
+      broadcast({ type: 'timeline-updated' });
+    } else {
+      broadcast({ type: 'pipeline-status', stage: 'transcribe', status: 'error', message: `Transcription failed (exit ${code})` });
+    }
+  });
+
+  res.json({ ok: true, message: 'Transcription started' });
+});
+
+// Run storyboard generation (Claude)
+app.post('/api/pipeline/storyboard', async (req, res) => {
+  broadcast({ type: 'pipeline-status', stage: 'storyboard', status: 'running', message: 'Generating storyboard with Claude...' });
+
+  const proc = spawn('node', [join(__dirname, 'pipeline', 'storyboard.js')], {
+    cwd: __dirname,
+    env: { ...process.env }
+  });
+
+  let stdout = '';
+  proc.stdout.on('data', (data) => {
+    stdout += data.toString();
+    broadcast({ type: 'pipeline-log', stage: 'storyboard', message: data.toString() });
+  });
+  proc.stderr.on('data', (data) => {
+    broadcast({ type: 'pipeline-log', stage: 'storyboard', message: data.toString() });
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0) {
+      const projectFile = join(PROJECT_DIR, 'project.json');
+      if (existsSync(projectFile)) {
+        const project = JSON.parse(readFileSync(projectFile, 'utf-8'));
+        project.stage = 'storyboarded';
+        writeFileSync(projectFile, JSON.stringify(project, null, 2));
+        broadcast({ type: 'project-updated', data: project });
+      }
+      broadcast({ type: 'pipeline-status', stage: 'storyboard', status: 'done', message: 'Storyboard complete!' });
+      broadcast({ type: 'scenes-updated' });
+    } else {
+      broadcast({ type: 'pipeline-status', stage: 'storyboard', status: 'error', message: `Storyboard failed (exit ${code})` });
+    }
+  });
+
+  res.json({ ok: true, message: 'Storyboard generation started' });
+});
+
+// Run prompt generation (Claude)
+app.post('/api/pipeline/gen-prompts', async (req, res) => {
+  broadcast({ type: 'pipeline-status', stage: 'prompts', status: 'running', message: 'Generating art prompts with Claude...' });
+
+  const proc = spawn('node', [join(__dirname, 'pipeline', 'gen-prompts.js')], {
+    cwd: __dirname,
+    env: { ...process.env }
+  });
+
+  proc.stdout.on('data', (data) => {
+    broadcast({ type: 'pipeline-log', stage: 'prompts', message: data.toString() });
+  });
+  proc.stderr.on('data', (data) => {
+    broadcast({ type: 'pipeline-log', stage: 'prompts', message: data.toString() });
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0) {
+      const projectFile = join(PROJECT_DIR, 'project.json');
+      if (existsSync(projectFile)) {
+        const project = JSON.parse(readFileSync(projectFile, 'utf-8'));
+        project.stage = 'prompted';
+        writeFileSync(projectFile, JSON.stringify(project, null, 2));
+        broadcast({ type: 'project-updated', data: project });
+      }
+      broadcast({ type: 'pipeline-status', stage: 'prompts', status: 'done', message: 'Prompts generated!' });
+      broadcast({ type: 'scenes-updated' });
+    } else {
+      broadcast({ type: 'pipeline-status', stage: 'prompts', status: 'error', message: `Prompt generation failed (exit ${code})` });
+    }
+  });
+
+  res.json({ ok: true, message: 'Prompt generation started' });
+});
+
+// Run stitching (ffmpeg)
+app.post('/api/pipeline/stitch', async (req, res) => {
+  broadcast({ type: 'pipeline-status', stage: 'stitch', status: 'running', message: 'Stitching video with ffmpeg...' });
+
+  const proc = spawn('node', [join(__dirname, 'pipeline', 'stitch.js')], {
+    cwd: __dirname,
+    env: { ...process.env }
+  });
+
+  proc.stdout.on('data', (data) => {
+    broadcast({ type: 'pipeline-log', stage: 'stitch', message: data.toString() });
+  });
+  proc.stderr.on('data', (data) => {
+    broadcast({ type: 'pipeline-log', stage: 'stitch', message: data.toString() });
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0) {
+      const projectFile = join(PROJECT_DIR, 'project.json');
+      if (existsSync(projectFile)) {
+        const project = JSON.parse(readFileSync(projectFile, 'utf-8'));
+        project.stage = 'done';
+        writeFileSync(projectFile, JSON.stringify(project, null, 2));
+        broadcast({ type: 'project-updated', data: project });
+      }
+      broadcast({ type: 'pipeline-status', stage: 'stitch', status: 'done', message: 'Video complete!' });
+    } else {
+      broadcast({ type: 'pipeline-status', stage: 'stitch', status: 'error', message: `Stitching failed (exit ${code})` });
+    }
+  });
+
+  res.json({ ok: true, message: 'Stitching started' });
 });
 
 // --- WebSocket ---

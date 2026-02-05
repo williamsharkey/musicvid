@@ -243,6 +243,105 @@ body {
   cursor: pointer;
 }
 #drop-zone.dragover { border-color: #666; color: #888; }
+
+/* Suno picker */
+#suno-picker {
+  padding: 16px 24px;
+  border-bottom: 1px solid #222;
+  background: #0d0d0d;
+}
+#suno-picker h3 {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#suno-picker h3 button {
+  background: #222;
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+}
+#suno-picker h3 button:hover { background: #333; }
+#suno-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.suno-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #111;
+  border: 1px solid #222;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.suno-card:hover { background: #1a1a1a; border-color: #333; }
+.suno-card.selected { background: #1a2a1a; border-color: #3a5a3a; }
+.suno-card img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #222;
+}
+.suno-card .info {
+  flex: 1;
+  min-width: 0;
+}
+.suno-card .title {
+  font-size: 12px;
+  color: #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.suno-card .meta {
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+}
+.suno-card .play-btn {
+  width: 32px;
+  height: 32px;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 50%;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.suno-card .play-btn:hover { background: #333; color: #fff; }
+.suno-card .select-btn {
+  background: #1a3a1a;
+  border: 1px solid #2a5a2a;
+  color: #6c6;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.suno-card .select-btn:hover { background: #2a4a2a; }
+#suno-loading {
+  color: #555;
+  padding: 20px;
+  text-align: center;
+}
+#suno-preview-audio {
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+}
 </style>
 </head>
 <body>
@@ -262,6 +361,16 @@ body {
 <div id="audio-bar">
   <audio id="audio-player" controls></audio>
   <span class="time" id="audio-time">0:00 / 0:00</span>
+</div>
+
+<div id="suno-picker">
+  <h3>
+    Pick from Suno Library
+    <button id="btn-load-suno">Load Songs</button>
+    <button id="btn-load-more-suno" style="display:none">Load More</button>
+  </h3>
+  <div id="suno-grid"></div>
+  <audio id="suno-preview-audio" style="display:none" controls></audio>
 </div>
 
 <div id="setup-panel">
@@ -356,6 +465,9 @@ function connectWs() {
     const msg = JSON.parse(e.data);
     if (msg.type === 'scenes-updated') loadScenes();
     if (msg.type === 'project-updated') loadProject();
+    if (msg.type === 'timeline-updated') loadScenes();
+    if (msg.type === 'pipeline-status') handlePipelineStatus(msg);
+    if (msg.type === 'pipeline-log') log(msg.message.trim(), 'info');
   };
   ws.onclose = () => { log('disconnected, reconnecting...'); setTimeout(connectWs, 2000); };
 }
@@ -594,16 +706,57 @@ $audioPlayer.addEventListener('timeupdate', () => {
   }
 });
 
-// --- Pipeline buttons (stubs — these invoke CLI tools) ---
+// --- Pipeline buttons ---
+let pipelineRunning = false;
+
+function handlePipelineStatus(msg) {
+  const { stage, status, message } = msg;
+  log(`[${stage}] ${message}`, status === 'error' ? 'error' : 'info');
+
+  if (status === 'done' || status === 'error') {
+    pipelineRunning = false;
+    // Reset button states
+    $('#btn-transcribe').textContent = 'Transcribe';
+    $('#btn-transcribe').disabled = false;
+    $('#btn-storyboard').textContent = 'Storyboard';
+    $('#btn-storyboard').disabled = false;
+    $('#btn-prompts').textContent = 'Gen Prompts';
+    $('#btn-prompts').disabled = false;
+    $('#btn-stitch').textContent = 'Stitch';
+    $('#btn-stitch').disabled = false;
+  }
+}
+
 $('#btn-transcribe').addEventListener('click', async () => {
-  log('Run: python3 pipeline/transcribe.py project/audio.mp3', 'info');
-  log('Then POST /api/timeline with the result', 'info');
-  alert('Run transcription from CLI:\n\npython3 pipeline/transcribe.py\n\nThis will use Whisper to generate word-level timestamps.');
+  if (pipelineRunning) return;
+  pipelineRunning = true;
+  $('#btn-transcribe').textContent = 'Transcribing...';
+  $('#btn-transcribe').disabled = true;
+  log('Starting Whisper transcription...', 'info');
+  try {
+    await fetch('/api/pipeline/transcribe', { method: 'POST' });
+  } catch (e) {
+    log('Failed to start transcription: ' + e.message, 'error');
+    pipelineRunning = false;
+    $('#btn-transcribe').textContent = 'Transcribe';
+    $('#btn-transcribe').disabled = false;
+  }
 });
 
-$('#btn-storyboard').addEventListener('click', () => {
-  log('Run: node pipeline/storyboard.js', 'info');
-  alert('Run storyboard generation from CLI:\n\nnode pipeline/storyboard.js\n\nThis will use Claude to generate a storyboard arc.');
+$('#btn-storyboard').addEventListener('click', async () => {
+  if (pipelineRunning) return;
+  pipelineRunning = true;
+  $('#btn-storyboard').textContent = 'Generating...';
+  $('#btn-storyboard').disabled = true;
+  log('Starting storyboard generation...', 'info');
+  try {
+    await fetch('/api/pipeline/storyboard', { method: 'POST' });
+  } catch (e) {
+    log('Failed to start storyboard: ' + e.message, 'error');
+    pipelineRunning = false;
+    $('#btn-storyboard').textContent = 'Storyboard';
+    $('#btn-storyboard').disabled = false;
+  }
 });
 
 $('#btn-slice').addEventListener('click', () => {
@@ -634,14 +787,36 @@ $('#btn-slice').addEventListener('click', () => {
   log(`sliced to ${scenes.length} scenes (max ${maxDur}s each)`, 'info');
 });
 
-$('#btn-prompts').addEventListener('click', () => {
-  log('Run: node pipeline/gen-prompts.js', 'info');
-  alert('Run prompt generation from CLI:\n\nnode pipeline/gen-prompts.js\n\nThis will use Claude to generate art prompts for each scene.');
+$('#btn-prompts').addEventListener('click', async () => {
+  if (pipelineRunning) return;
+  pipelineRunning = true;
+  $('#btn-prompts').textContent = 'Generating...';
+  $('#btn-prompts').disabled = true;
+  log('Starting prompt generation...', 'info');
+  try {
+    await fetch('/api/pipeline/gen-prompts', { method: 'POST' });
+  } catch (e) {
+    log('Failed to start prompt generation: ' + e.message, 'error');
+    pipelineRunning = false;
+    $('#btn-prompts').textContent = 'Gen Prompts';
+    $('#btn-prompts').disabled = false;
+  }
 });
 
-$('#btn-stitch').addEventListener('click', () => {
-  log('Run: node pipeline/stitch.js', 'info');
-  alert('Run stitching from CLI:\n\nnode pipeline/stitch.js\n\nThis will use ffmpeg to assemble clips into the final video.');
+$('#btn-stitch').addEventListener('click', async () => {
+  if (pipelineRunning) return;
+  pipelineRunning = true;
+  $('#btn-stitch').textContent = 'Stitching...';
+  $('#btn-stitch').disabled = true;
+  log('Starting video stitching...', 'info');
+  try {
+    await fetch('/api/pipeline/stitch', { method: 'POST' });
+  } catch (e) {
+    log('Failed to start stitching: ' + e.message, 'error');
+    pipelineRunning = false;
+    $('#btn-stitch').textContent = 'Stitch';
+    $('#btn-stitch').disabled = false;
+  }
 });
 
 // --- Utilities ---
@@ -659,9 +834,111 @@ function log(msg, cls = '') {
   $('#log').prepend(el);
 }
 
+// --- Suno Picker ---
+let sunoSongs = [];
+let sunoPage = 0;
+const $sunoGrid = $('#suno-grid');
+const $sunoPreview = $('#suno-preview-audio');
+
+$('#btn-load-suno').addEventListener('click', () => loadSunoSongs(0));
+$('#btn-load-more-suno').addEventListener('click', () => loadSunoSongs(sunoPage + 1));
+
+async function loadSunoSongs(page = 0) {
+  $sunoGrid.innerHTML = '<div id="suno-loading">Loading songs from Suno...</div>';
+  try {
+    const res = await fetch(`/api/suno/songs?page=${page}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const songs = data.clips || data.songs || data || [];
+
+    if (page === 0) {
+      sunoSongs = songs;
+    } else {
+      sunoSongs = sunoSongs.concat(songs);
+    }
+    sunoPage = page;
+
+    renderSunoGrid();
+    $('#btn-load-more-suno').style.display = songs.length >= 20 ? 'inline-block' : 'none';
+    log(`loaded ${sunoSongs.length} songs from Suno`, 'info');
+  } catch (e) {
+    $sunoGrid.innerHTML = `<div id="suno-loading" style="color:#a44">Error: ${e.message}</div>`;
+    log(`suno error: ${e.message}`, 'error');
+  }
+}
+
+function renderSunoGrid() {
+  $sunoGrid.innerHTML = '';
+  for (const song of sunoSongs) {
+    const card = document.createElement('div');
+    card.className = 'suno-card';
+    card.dataset.id = song.id;
+
+    const imgUrl = song.image_url || song.image_large_url || '';
+    const title = song.title || 'Untitled';
+    const dur = song.duration ? `${Math.round(song.duration)}s` : '';
+    const style = (song.metadata?.tags || '').slice(0, 40);
+
+    card.innerHTML = `
+      <img src="${imgUrl}" alt="" onerror="this.style.display='none'">
+      <div class="info">
+        <div class="title">${escHtml(title)}</div>
+        <div class="meta">${dur} ${style ? '· ' + escHtml(style) : ''}</div>
+      </div>
+      <button class="play-btn" title="Preview">&#9658;</button>
+      <button class="select-btn">Use</button>
+    `;
+
+    const playBtn = card.querySelector('.play-btn');
+    const selectBtn = card.querySelector('.select-btn');
+
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (song.audio_url) {
+        $sunoPreview.src = song.audio_url;
+        $sunoPreview.style.display = 'block';
+        $sunoPreview.play();
+        // Highlight current
+        document.querySelectorAll('.suno-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      }
+    });
+
+    selectBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      selectBtn.textContent = 'Loading...';
+      selectBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/suno/select/${song.id}`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        log(`selected: ${song.title}`, 'info');
+        // Hide picker and reload project
+        loadProject();
+      } catch (e) {
+        log(`select error: ${e.message}`, 'error');
+        selectBtn.textContent = 'Use';
+        selectBtn.disabled = false;
+      }
+    });
+
+    $sunoGrid.appendChild(card);
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // --- Init ---
 connectWs();
 loadProject();
+
+// Auto-load Suno songs on page load
+loadSunoSongs(0);
 
 // Add playing style
 const style = document.createElement('style');

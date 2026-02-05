@@ -1,4 +1,6 @@
 node_modules/
+.venv/
+.suno-cookie
 project/audio.*
 project/clips/
 project/output/
