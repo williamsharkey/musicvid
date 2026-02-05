@@ -25,12 +25,19 @@ const existingScenes = loadJson('scenes.json', []);
 
 const duration = project.duration || (timeline.length ? timeline[timeline.length - 1].end : 180);
 
+// Check for style anchor
+const styleAnchorPrompt = project.stylePrompt || '';
+const hasStyleAnchor = !!styleAnchorPrompt || !!project.styleAnchorImage;
+
 const prompt = `You are creating a music video storyboard for:
 Title: ${project.title || 'Untitled'}
 Artist: ${project.artist || 'Unknown'}
-Style: ${project.style || 'cinematic'}
+Style/Genre: ${project.style || 'cinematic'}
 Duration: ${duration} seconds
 
+${styleAnchorPrompt ? `VISUAL STYLE ANCHOR (use this as the consistent visual reference for all scenes):
+${styleAnchorPrompt}
+` : ''}
 LYRICS:
 ${project.lyrics || '(instrumental)'}
 

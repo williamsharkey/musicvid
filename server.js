@@ -121,6 +121,19 @@ app.post('/api/upload-audio', express.raw({ type: 'audio/*', limit: '100mb' }), 
   res.json({ path: `audio.${ext}` });
 });
 
+// Style anchor image upload
+app.post('/api/upload-style-anchor', express.raw({ type: 'image/*', limit: '20mb' }), (req, res) => {
+  const contentType = req.headers['content-type'] || '';
+  let ext = 'jpg';
+  if (contentType.includes('png')) ext = 'png';
+  else if (contentType.includes('webp')) ext = 'webp';
+
+  mkdirSync(join(PROJECT_DIR, 'style-refs'), { recursive: true });
+  const dest = join(PROJECT_DIR, 'style-refs', `anchor.${ext}`);
+  writeFileSync(dest, req.body);
+  res.json({ path: `style-refs/anchor.${ext}` });
+});
+
 // --- Suno API proxy ---
 const SUNO_API = 'https://studio-api.prod.suno.com';
 
@@ -133,6 +146,22 @@ function getSunoToken() {
   if (cookie.startsWith('eyJ')) return cookie;
   return null;
 }
+
+// Save Suno cookie
+app.post('/api/suno/cookie', (req, res) => {
+  const { cookie } = req.body;
+  if (!cookie) return res.status(400).json({ error: 'No cookie provided' });
+
+  // Extract __session if full cookie string provided
+  let sessionCookie = cookie;
+  if (cookie.includes('__session=')) {
+    const match = cookie.match(/__session=([^;]+)/);
+    if (match) sessionCookie = `__session=${match[1]}`;
+  }
+
+  writeFileSync(join(__dirname, '.suno-cookie'), sessionCookie);
+  res.json({ ok: true });
+});
 
 // List Suno songs
 app.get('/api/suno/songs', async (req, res) => {

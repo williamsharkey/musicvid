@@ -26,15 +26,21 @@ if (!scenes.length) {
   process.exit(1);
 }
 
-// Check for style reference description
+// Check for style anchor
+const styleAnchorPrompt = project.stylePrompt || '';
 const styleRefDir = join(PROJECT_DIR, 'style-refs');
 const styleRefs = existsSync(styleRefDir) ? readdirSync(styleRefDir) : [];
+const hasStyleAnchor = styleRefs.includes('anchor.jpg') || styleRefs.includes('anchor.png') || styleRefs.includes('anchor.webp');
 
 const prompt = `You are generating Flux 2 Pro image generation prompts for a music video.
 
 SONG: "${project.title || 'Untitled'}" by ${project.artist || 'Unknown'}
-STYLE: ${project.style || 'cinematic'}
-${styleRefs.length ? `STYLE REFERENCE FILES: ${styleRefs.join(', ')}` : ''}
+STYLE/GENRE: ${project.style || 'cinematic'}
+
+${styleAnchorPrompt ? `STYLE ANCHOR PROMPT (CRITICAL - use this exact style description as a prefix/foundation for EVERY scene prompt):
+"${styleAnchorPrompt}"
+` : ''}
+${hasStyleAnchor ? `NOTE: A style anchor image exists at style-refs/anchor.* - prompts should produce images consistent with this reference.` : ''}
 
 SCENES TO PROMPT:
 ${JSON.stringify(scenes.map((s, i) => ({
@@ -47,12 +53,14 @@ ${JSON.stringify(scenes.map((s, i) => ({
 })), null, 2)}
 
 For each scene, create a detailed Flux 2 Pro image prompt. Requirements:
+${styleAnchorPrompt ? `- IMPORTANT: Start each prompt with the style anchor elements to ensure consistency` : ''}
 - Maintain consistent visual style across ALL prompts
 - Include style anchors in every prompt (color palette, art style, lighting)
 - Be specific about composition, camera angle, lighting, colors
 - Reference the same characters/elements consistently
-- Prompts should be 1-3 sentences, vivid and specific
+- Prompts should be 2-4 sentences, vivid and specific
 - Don't use negative prompts (Flux doesn't use them)
+- Each prompt should be self-contained (img2img will use style anchor image as reference)
 
 Output a JSON array where each element is:
 {

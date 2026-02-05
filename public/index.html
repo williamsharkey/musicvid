@@ -37,14 +37,56 @@ body {
   font-size: 12px;
 }
 #topbar button:hover { background: #333; color: #fff; }
-#stage-badge {
-  background: #1a3a1a;
-  color: #4a4;
-  padding: 2px 8px;
-  font-size: 11px;
-  border-radius: 3px;
+/* Step indicators */
+#step-indicators {
+  display: flex;
+  gap: 4px;
   margin-left: auto;
 }
+.step-indicator {
+  padding: 2px 8px;
+  font-size: 10px;
+  border-radius: 3px;
+  background: #222;
+  color: #555;
+}
+.step-indicator.done {
+  background: #1a3a1a;
+  color: #4a4;
+}
+.step-indicator.active {
+  background: #3a3a1a;
+  color: #aa4;
+}
+
+/* Toolbar */
+#toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #0d0d0d;
+  border-bottom: 1px solid #222;
+  flex-wrap: wrap;
+}
+.tool-btn {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #888;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.tool-btn:hover { background: #252525; color: #aaa; }
+.tool-btn.active { background: #1a2a3a; border-color: #2a5a8a; color: #8af; }
+.tool-btn.action-btn {
+  background: #2a2a1a;
+  border-color: #4a4a2a;
+  color: #aa8;
+}
+.tool-btn.action-btn:hover { background: #3a3a2a; color: #cc9; }
+.tool-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Setup panel */
 #setup-panel {
@@ -332,6 +374,91 @@ body {
   cursor: pointer;
 }
 .suno-card .select-btn:hover { background: #2a4a2a; }
+.suno-card .star-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #444;
+  padding: 4px;
+}
+.suno-card .star-btn:hover { color: #a80; }
+.suno-card .star-btn.starred { color: #fb0; }
+.suno-card .note-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  color: #444;
+  padding: 4px;
+}
+.suno-card .note-btn:hover { color: #08a; }
+.suno-card .note-btn.has-note { color: #0af; }
+.suno-card.starred { border-color: #553; background: #1a1a10; }
+.suno-card .note-preview {
+  font-size: 9px;
+  color: #666;
+  margin-top: 2px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.note-modal-content {
+  background: #111;
+  border: 1px solid #333;
+  padding: 16px;
+  width: 400px;
+  max-width: 90%;
+}
+.note-modal-content h4 {
+  color: #888;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.note-modal-content textarea {
+  width: 100%;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  min-height: 100px;
+  resize: vertical;
+}
+.note-modal-content .modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+.note-modal-content button {
+  background: #222;
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 6px 16px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.note-modal-content button:hover { background: #333; }
+.note-modal-content button.primary {
+  background: #1a3a1a;
+  border-color: #2a5a2a;
+  color: #6c6;
+}
 #suno-loading {
   color: #555;
   padding: 20px;
@@ -342,6 +469,156 @@ body {
   height: 32px;
   margin-top: 8px;
 }
+
+/* Style reference anchor */
+#style-anchor {
+  padding: 16px 24px;
+  border-bottom: 1px solid #222;
+  background: #0a0a0a;
+  display: none;
+}
+#style-anchor h3 {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+}
+#style-anchor-content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+#style-anchor-image {
+  width: 200px;
+  min-height: 120px;
+  background: #111;
+  border: 2px dashed #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 11px;
+  cursor: pointer;
+  position: relative;
+}
+#style-anchor-image img {
+  max-width: 100%;
+  max-height: 200px;
+}
+#style-anchor-image.has-image {
+  border-style: solid;
+  border-color: #3a5a3a;
+}
+#style-anchor-prompt {
+  flex: 1;
+}
+#style-anchor-prompt textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  min-height: 100px;
+  resize: vertical;
+}
+#style-anchor-prompt label {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 4px;
+}
+#style-anchor-prompt button {
+  margin-top: 8px;
+  background: #1a3a1a;
+  border: 1px solid #2a5a2a;
+  color: #6c6;
+  padding: 6px 16px;
+  font-size: 12px;
+  cursor: pointer;
+}
+#style-anchor-prompt button:hover { background: #2a4a2a; }
+
+/* Storyboard view */
+#storyboard-view {
+  padding: 16px 24px;
+  display: none;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: #0a0a0a;
+  border-bottom: 1px solid #222;
+}
+#storyboard-view h3 {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  padding-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#copy-next-btn {
+  background: #1a3a1a;
+  border: 1px solid #2a5a2a;
+  color: #6c6;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+#copy-next-btn:hover { background: #2a4a2a; }
+#copy-next-btn:active { background: #3a5a3a; }
+#copy-counter {
+  font-size: 11px;
+  color: #666;
+}
+.storyboard-scene {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #111;
+  border: 1px solid #222;
+  border-left: 3px solid #555;
+}
+.storyboard-scene.status-approved { border-left-color: #0a0; }
+.storyboard-scene.status-prompted { border-left-color: #a80; }
+.storyboard-scene .scene-num {
+  font-size: 11px;
+  color: #555;
+  min-width: 40px;
+}
+.storyboard-scene .scene-time {
+  font-size: 10px;
+  color: #444;
+  min-width: 80px;
+}
+.storyboard-scene .scene-label {
+  font-size: 12px;
+  color: #aaa;
+  flex: 1;
+}
+.storyboard-scene .scene-desc {
+  font-size: 11px;
+  color: #666;
+  flex: 2;
+}
+.storyboard-scene .copy-btn {
+  background: #222;
+  border: 1px solid #333;
+  color: #888;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.storyboard-scene .copy-btn:hover { background: #333; color: #aaa; }
+.storyboard-scene .copy-btn.copied { background: #1a3a1a; color: #6c6; border-color: #2a5a2a; }
+.storyboard-scene.just-copied { background: #1a2a1a; }
 </style>
 </head>
 <body>
@@ -349,13 +626,18 @@ body {
 <div id="topbar">
   <h1>musicvid</h1>
   <span class="song-title" id="song-title">—</span>
-  <button id="btn-setup">Setup</button>
-  <button id="btn-transcribe">Transcribe</button>
-  <button id="btn-storyboard">Storyboard</button>
-  <button id="btn-slice">Slice Scenes</button>
-  <button id="btn-prompts">Gen Prompts</button>
-  <button id="btn-stitch">Stitch</button>
-  <span id="stage-badge">init</span>
+  <div id="step-indicators"></div>
+</div>
+
+<div id="toolbar">
+  <button id="btn-setup" class="tool-btn">Setup</button>
+  <button id="btn-style" class="tool-btn">Style Anchor</button>
+  <button id="btn-view-storyboard" class="tool-btn">View Storyboard</button>
+  <button id="btn-gen-storyboard" class="tool-btn action-btn">Generate New Storyboard</button>
+  <button id="btn-slice" class="tool-btn action-btn">Slice to 6s</button>
+  <button id="btn-view-prompts" class="tool-btn">View Prompts</button>
+  <button id="btn-gen-prompts" class="tool-btn action-btn">Generate Prompts</button>
+  <button id="btn-stitch" class="tool-btn action-btn">Stitch Video</button>
 </div>
 
 <div id="audio-bar">
@@ -368,9 +650,39 @@ body {
     Pick from Suno Library
     <button id="btn-load-suno">Load Songs</button>
     <button id="btn-load-more-suno" style="display:none">Load More</button>
+    <button id="btn-show-cookie" style="margin-left:auto">Set Cookie</button>
   </h3>
+  <div id="cookie-input" style="display:none;margin-bottom:12px">
+    <input id="inp-suno-cookie" type="text" placeholder="Paste cookie from browser console: copy(document.cookie)" style="width:100%;background:#111;border:1px solid #333;color:#e0e0e0;padding:8px;font-family:inherit;font-size:11px">
+    <button id="btn-save-cookie" style="margin-top:6px;background:#1a3a1a;border:1px solid #2a5a2a;color:#6c6;padding:4px 12px;font-size:11px;cursor:pointer">Save Cookie</button>
+    <span style="font-size:10px;color:#555;margin-left:8px">Run in suno.com console: copy(document.cookie)</span>
+  </div>
   <div id="suno-grid"></div>
   <audio id="suno-preview-audio" style="display:none" controls></audio>
+</div>
+
+<div id="style-anchor">
+  <h3>Style Reference Anchor (used for consistent img2img generation)</h3>
+  <div id="style-anchor-content">
+    <div id="style-anchor-image">
+      <span>Drop image or click</span>
+    </div>
+    <input type="file" id="style-anchor-input" accept="image/*" style="display:none">
+    <div id="style-anchor-prompt">
+      <label>Style Prompt (describes the visual style for all keyframes)</label>
+      <textarea id="inp-style-prompt" placeholder="e.g. cinematic wide shot, warm golden hour lighting, oil painting style, rich saturated colors, dramatic shadows..."></textarea>
+      <button id="btn-save-style-anchor">Save Style Anchor</button>
+    </div>
+  </div>
+</div>
+
+<div id="storyboard-view">
+  <h3>
+    Storyboard (<span id="scene-count">0</span> scenes)
+    <button id="copy-next-btn">Copy Prompt #1</button>
+    <span id="copy-counter"></span>
+  </h3>
+  <div id="storyboard-list"></div>
 </div>
 
 <div id="setup-panel">
@@ -484,7 +796,6 @@ async function api(method, path, body) {
 async function loadProject() {
   project = await api('GET', 'project');
   $('#song-title').textContent = project.title || '—';
-  $('#stage-badge').textContent = project.stage || 'init';
   $('#inp-title').value = project.title || '';
   $('#inp-artist').value = project.artist || '';
   $('#inp-style').value = project.style || '';
@@ -500,6 +811,23 @@ async function loadProject() {
     $timelineContainer.style.display = 'block';
     loadScenes();
   }
+  updateStepIndicators();
+}
+
+function updateStepIndicators() {
+  const steps = [
+    { id: 'song', label: 'Song', done: !!project.audioFile },
+    { id: 'style', label: 'Style', done: !!project.stylePrompt || !!project.styleAnchorImage },
+    { id: 'storyboard', label: 'Storyboard', done: scenes.length > 0 },
+    { id: 'prompts', label: 'Prompts', done: scenes.some(s => s.prompt) },
+    { id: 'keyframes', label: 'Keyframes', done: scenes.some(s => s.keyframe) },
+    { id: 'video', label: 'Video', done: project.stage === 'done' }
+  ];
+
+  const container = $('#step-indicators');
+  container.innerHTML = steps.map(s =>
+    `<span class="step-indicator ${s.done ? 'done' : ''}">${s.label}</span>`
+  ).join('');
 }
 
 async function saveProject() {
@@ -517,6 +845,7 @@ async function saveProject() {
 async function loadScenes() {
   scenes = await api('GET', 'scenes');
   renderTimeline();
+  updateStepIndicators();
 }
 
 async function saveScenes() {
@@ -656,8 +985,48 @@ $('#btn-save-setup').addEventListener('click', async () => {
 });
 
 $('#btn-setup').addEventListener('click', () => {
-  $setupPanel.style.display = $setupPanel.style.display === 'none' ? 'block' : 'none';
+  hideAllPanels();
+  $setupPanel.style.display = 'block';
+  setActiveToolBtn('btn-setup');
 });
+
+$('#btn-style').addEventListener('click', () => {
+  hideAllPanels();
+  $styleAnchor.style.display = 'block';
+  setActiveToolBtn('btn-style');
+});
+
+$('#btn-view-storyboard').addEventListener('click', () => {
+  hideAllPanels();
+  $timelineContainer.style.display = 'block';
+  $('#storyboard-view').style.display = 'block';
+  renderStoryboardView();
+  setActiveToolBtn('btn-view-storyboard');
+});
+
+$('#btn-view-prompts').addEventListener('click', () => {
+  hideAllPanels();
+  $timelineContainer.style.display = 'block';
+  renderStoryboardView();
+  // Select first scene with a prompt to show it
+  const idx = scenes.findIndex(s => s.prompt);
+  if (idx >= 0) selectSegment(idx);
+  setActiveToolBtn('btn-view-prompts');
+});
+
+function hideAllPanels() {
+  $setupPanel.style.display = 'none';
+  $styleAnchor.style.display = 'none';
+  $timelineContainer.style.display = 'none';
+  $('#storyboard-view').style.display = 'none';
+  $detail.style.display = 'none';
+}
+
+function setActiveToolBtn(id) {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(id);
+  if (btn) btn.classList.add('active');
+}
 
 // --- Audio upload ---
 const dropZone = $('#drop-zone');
@@ -716,46 +1085,54 @@ function handlePipelineStatus(msg) {
   if (status === 'done' || status === 'error') {
     pipelineRunning = false;
     // Reset button states
-    $('#btn-transcribe').textContent = 'Transcribe';
-    $('#btn-transcribe').disabled = false;
-    $('#btn-storyboard').textContent = 'Storyboard';
-    $('#btn-storyboard').disabled = false;
-    $('#btn-prompts').textContent = 'Gen Prompts';
-    $('#btn-prompts').disabled = false;
-    $('#btn-stitch').textContent = 'Stitch';
+    $('#btn-gen-storyboard').textContent = 'Generate New Storyboard';
+    $('#btn-gen-storyboard').disabled = false;
+    $('#btn-gen-prompts').textContent = 'Generate Prompts';
+    $('#btn-gen-prompts').disabled = false;
+    $('#btn-stitch').textContent = 'Stitch Video';
     $('#btn-stitch').disabled = false;
+
+    // Show storyboard view after storyboard generation
+    if (stage === 'storyboard' && status === 'done') {
+      loadScenes().then(() => {
+        hideAllPanels();
+        $timelineContainer.style.display = 'block';
+        $('#storyboard-view').style.display = 'block';
+        renderStoryboardView();
+        setActiveToolBtn('btn-view-storyboard');
+        updateStepIndicators();
+      });
+    }
+
+    // Update indicators after prompts
+    if (stage === 'prompts' && status === 'done') {
+      loadScenes().then(() => {
+        renderStoryboardView();
+        updateStepIndicators();
+      });
+    }
   }
 }
 
-$('#btn-transcribe').addEventListener('click', async () => {
+$('#btn-gen-storyboard').addEventListener('click', async () => {
   if (pipelineRunning) return;
-  pipelineRunning = true;
-  $('#btn-transcribe').textContent = 'Transcribing...';
-  $('#btn-transcribe').disabled = true;
-  log('Starting Whisper transcription...', 'info');
-  try {
-    await fetch('/api/pipeline/transcribe', { method: 'POST' });
-  } catch (e) {
-    log('Failed to start transcription: ' + e.message, 'error');
-    pipelineRunning = false;
-    $('#btn-transcribe').textContent = 'Transcribe';
-    $('#btn-transcribe').disabled = false;
-  }
-});
 
-$('#btn-storyboard').addEventListener('click', async () => {
-  if (pipelineRunning) return;
+  // Confirm if storyboard already exists
+  if (scenes.length > 0) {
+    if (!confirm(`This will replace the existing ${scenes.length} scenes. Continue?`)) return;
+  }
+
   pipelineRunning = true;
-  $('#btn-storyboard').textContent = 'Generating...';
-  $('#btn-storyboard').disabled = true;
+  $('#btn-gen-storyboard').textContent = 'Generating...';
+  $('#btn-gen-storyboard').disabled = true;
   log('Starting storyboard generation...', 'info');
   try {
     await fetch('/api/pipeline/storyboard', { method: 'POST' });
   } catch (e) {
     log('Failed to start storyboard: ' + e.message, 'error');
     pipelineRunning = false;
-    $('#btn-storyboard').textContent = 'Storyboard';
-    $('#btn-storyboard').disabled = false;
+    $('#btn-gen-storyboard').textContent = 'Generate New Storyboard';
+    $('#btn-gen-storyboard').disabled = false;
   }
 });
 
@@ -787,19 +1164,26 @@ $('#btn-slice').addEventListener('click', () => {
   log(`sliced to ${scenes.length} scenes (max ${maxDur}s each)`, 'info');
 });
 
-$('#btn-prompts').addEventListener('click', async () => {
+$('#btn-gen-prompts').addEventListener('click', async () => {
   if (pipelineRunning) return;
+
+  // Confirm if prompts already exist
+  const hasPrompts = scenes.some(s => s.prompt);
+  if (hasPrompts) {
+    if (!confirm('This will replace existing prompts. Continue?')) return;
+  }
+
   pipelineRunning = true;
-  $('#btn-prompts').textContent = 'Generating...';
-  $('#btn-prompts').disabled = true;
+  $('#btn-gen-prompts').textContent = 'Generating...';
+  $('#btn-gen-prompts').disabled = true;
   log('Starting prompt generation...', 'info');
   try {
     await fetch('/api/pipeline/gen-prompts', { method: 'POST' });
   } catch (e) {
     log('Failed to start prompt generation: ' + e.message, 'error');
     pipelineRunning = false;
-    $('#btn-prompts').textContent = 'Gen Prompts';
-    $('#btn-prompts').disabled = false;
+    $('#btn-gen-prompts').textContent = 'Generate Prompts';
+    $('#btn-gen-prompts').disabled = false;
   }
 });
 
@@ -840,8 +1224,65 @@ let sunoPage = 0;
 const $sunoGrid = $('#suno-grid');
 const $sunoPreview = $('#suno-preview-audio');
 
+// LocalStorage for stars and notes
+function getSongMeta() {
+  try {
+    return JSON.parse(localStorage.getItem('sunoSongMeta') || '{}');
+  } catch { return {}; }
+}
+function saveSongMeta(meta) {
+  localStorage.setItem('sunoSongMeta', JSON.stringify(meta));
+}
+function isStarred(id) {
+  return getSongMeta()[id]?.starred || false;
+}
+function toggleStar(id) {
+  const meta = getSongMeta();
+  if (!meta[id]) meta[id] = {};
+  meta[id].starred = !meta[id].starred;
+  saveSongMeta(meta);
+  return meta[id].starred;
+}
+function getNote(id) {
+  return getSongMeta()[id]?.note || '';
+}
+function setNote(id, note) {
+  const meta = getSongMeta();
+  if (!meta[id]) meta[id] = {};
+  meta[id].note = note;
+  saveSongMeta(meta);
+}
+
 $('#btn-load-suno').addEventListener('click', () => loadSunoSongs(0));
 $('#btn-load-more-suno').addEventListener('click', () => loadSunoSongs(sunoPage + 1));
+
+$('#btn-show-cookie').addEventListener('click', () => {
+  const el = $('#cookie-input');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+
+$('#btn-save-cookie').addEventListener('click', async () => {
+  const cookie = $('#inp-suno-cookie').value.trim();
+  if (!cookie) return;
+  try {
+    const res = await fetch('/api/suno/cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookie })
+    });
+    if (res.ok) {
+      log('Suno cookie saved', 'info');
+      $('#cookie-input').style.display = 'none';
+      $('#inp-suno-cookie').value = '';
+      loadSunoSongs(0);
+    } else {
+      const err = await res.json();
+      log('Cookie save failed: ' + err.error, 'error');
+    }
+  } catch (e) {
+    log('Cookie save error: ' + e.message, 'error');
+  }
+});
 
 async function loadSunoSongs(page = 0) {
   $sunoGrid.innerHTML = '<div id="suno-loading">Loading songs from Suno...</div>';
@@ -872,28 +1313,57 @@ async function loadSunoSongs(page = 0) {
 
 function renderSunoGrid() {
   $sunoGrid.innerHTML = '';
-  for (const song of sunoSongs) {
+
+  // Sort: starred first
+  const sorted = [...sunoSongs].sort((a, b) => {
+    const aStarred = isStarred(a.id) ? 1 : 0;
+    const bStarred = isStarred(b.id) ? 1 : 0;
+    return bStarred - aStarred;
+  });
+
+  for (const song of sorted) {
     const card = document.createElement('div');
     card.className = 'suno-card';
+    if (isStarred(song.id)) card.classList.add('starred');
     card.dataset.id = song.id;
 
     const imgUrl = song.image_url || song.image_large_url || '';
     const title = song.title || 'Untitled';
     const dur = song.duration ? `${Math.round(song.duration)}s` : '';
     const style = (song.metadata?.tags || '').slice(0, 40);
+    const note = getNote(song.id);
 
     card.innerHTML = `
       <img src="${imgUrl}" alt="" onerror="this.style.display='none'">
       <div class="info">
         <div class="title">${escHtml(title)}</div>
         <div class="meta">${dur} ${style ? '· ' + escHtml(style) : ''}</div>
+        ${note ? `<div class="note-preview">${escHtml(note.slice(0, 50))}</div>` : ''}
       </div>
+      <button class="star-btn ${isStarred(song.id) ? 'starred' : ''}" title="Star">&#9733;</button>
+      <button class="note-btn ${note ? 'has-note' : ''}" title="Add note">&#9998;</button>
       <button class="play-btn" title="Preview">&#9658;</button>
       <button class="select-btn">Use</button>
     `;
 
+    const starBtn = card.querySelector('.star-btn');
+    const noteBtn = card.querySelector('.note-btn');
     const playBtn = card.querySelector('.play-btn');
     const selectBtn = card.querySelector('.select-btn');
+
+    starBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const starred = toggleStar(song.id);
+      starBtn.classList.toggle('starred', starred);
+      card.classList.toggle('starred', starred);
+      // Re-render to re-sort
+      renderSunoGrid();
+    });
+
+    noteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showNoteModal(song.id, title);
+    });
 
     playBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -929,13 +1399,216 @@ function renderSunoGrid() {
   }
 }
 
+function showNoteModal(songId, songTitle) {
+  const existing = getNote(songId);
+  const modal = document.createElement('div');
+  modal.className = 'note-modal';
+  modal.innerHTML = `
+    <div class="note-modal-content">
+      <h4>Notes for: ${escHtml(songTitle)}</h4>
+      <textarea id="note-textarea" placeholder="Add your notes about this song...">${escHtml(existing)}</textarea>
+      <div class="modal-actions">
+        <button id="note-cancel">Cancel</button>
+        <button id="note-save" class="primary">Save</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  modal.querySelector('#note-cancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('#note-save').addEventListener('click', () => {
+    const note = modal.querySelector('#note-textarea').value;
+    setNote(songId, note);
+    modal.remove();
+    renderSunoGrid();
+    log('Note saved', 'info');
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  modal.querySelector('#note-textarea').focus();
+}
+
 function escHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// --- Style Anchor ---
+const $styleAnchor = $('#style-anchor');
+const $styleAnchorImage = $('#style-anchor-image');
+const $styleAnchorInput = $('#style-anchor-input');
+
+$styleAnchorImage.addEventListener('click', () => $styleAnchorInput.click());
+$styleAnchorImage.addEventListener('dragover', (e) => { e.preventDefault(); });
+$styleAnchorImage.addEventListener('drop', (e) => {
+  e.preventDefault();
+  handleStyleAnchorImage(e.dataTransfer.files[0]);
+});
+$styleAnchorInput.addEventListener('change', () => handleStyleAnchorImage($styleAnchorInput.files[0]));
+
+async function handleStyleAnchorImage(file) {
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('image', file);
+
+  // Show preview immediately
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    $styleAnchorImage.innerHTML = `<img src="${e.target.result}" alt="style anchor">`;
+    $styleAnchorImage.classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+
+  // Upload to server
+  try {
+    const res = await fetch('/api/upload-style-anchor', {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file
+    });
+    const data = await res.json();
+    project.styleAnchorImage = data.path;
+    log('style anchor image uploaded', 'info');
+  } catch (e) {
+    log('upload error: ' + e.message, 'error');
+  }
+}
+
+$('#btn-save-style-anchor').addEventListener('click', async () => {
+  project.stylePrompt = $('#inp-style-prompt').value;
+  await api('POST', 'project', project);
+  log('style anchor saved', 'info');
+});
+
+function loadStyleAnchor() {
+  if (project.styleAnchorImage) {
+    $styleAnchorImage.innerHTML = `<img src="/project/${project.styleAnchorImage}" alt="style anchor">`;
+    $styleAnchorImage.classList.add('has-image');
+  }
+  if (project.stylePrompt) {
+    $('#inp-style-prompt').value = project.stylePrompt;
+  }
+}
+
+// --- Storyboard View ---
+let copyIndex = 0;
+
+function updateCopyNextBtn() {
+  const btn = $('#copy-next-btn');
+  const counter = $('#copy-counter');
+  if (copyIndex < scenes.length) {
+    btn.textContent = `Copy Prompt #${copyIndex + 1}`;
+    btn.disabled = false;
+    counter.textContent = `${copyIndex}/${scenes.length} copied`;
+  } else {
+    btn.textContent = 'All copied!';
+    btn.disabled = true;
+    counter.textContent = `${scenes.length}/${scenes.length} done`;
+  }
+}
+
+async function copyPromptAtIndex(idx) {
+  const sc = scenes[idx];
+  if (!sc) return;
+
+  const text = sc.prompt || sc.description || '';
+  try {
+    await navigator.clipboard.writeText(text);
+    log(`Copied prompt #${idx + 1} to clipboard`, 'info');
+
+    // Flash the row
+    const rows = document.querySelectorAll('.storyboard-scene');
+    rows.forEach(r => r.classList.remove('just-copied'));
+    if (rows[idx]) {
+      rows[idx].classList.add('just-copied');
+      rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const copyBtn = rows[idx].querySelector('.copy-btn');
+      if (copyBtn) {
+        copyBtn.classList.add('copied');
+        copyBtn.textContent = 'Copied!';
+      }
+    }
+
+    // Update index to next
+    copyIndex = idx + 1;
+    updateCopyNextBtn();
+  } catch (e) {
+    log('Copy failed: ' + e.message, 'error');
+  }
+}
+
+$('#copy-next-btn').addEventListener('click', () => {
+  if (copyIndex < scenes.length) {
+    copyPromptAtIndex(copyIndex);
+  }
+});
+
+function renderStoryboardView() {
+  const $view = $('#storyboard-view');
+  const $list = $('#storyboard-list');
+
+  if (!scenes.length) {
+    $view.style.display = 'none';
+    return;
+  }
+
+  $view.style.display = 'block';
+  $('#scene-count').textContent = scenes.length;
+  updateCopyNextBtn();
+
+  $list.innerHTML = '';
+  scenes.forEach((sc, i) => {
+    const hasPrompt = !!sc.prompt;
+    const div = document.createElement('div');
+    div.className = `storyboard-scene status-${sc.status || 'pending'}`;
+    div.innerHTML = `
+      <div class="scene-num">#${i + 1}</div>
+      <div class="scene-time">${fmtTime(sc.start)} - ${fmtTime(sc.end)}</div>
+      <div class="scene-label">${escHtml(sc.label || '')}</div>
+      <div class="scene-desc">${escHtml((sc.description || '').slice(0, 100))}</div>
+      <button class="copy-btn" data-idx="${i}">${hasPrompt ? 'Copy' : 'No prompt'}</button>
+    `;
+
+    const copyBtn = div.querySelector('.copy-btn');
+    if (hasPrompt) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyPromptAtIndex(i);
+      });
+    } else {
+      copyBtn.disabled = true;
+    }
+
+    div.addEventListener('click', () => {
+      selectSegment(i);
+      $timelineContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+    $list.appendChild(div);
+  });
+}
+
 // --- Init ---
 connectWs();
-loadProject();
+loadProject().then(() => {
+  loadStyleAnchor();
+  // Default view based on project state
+  if (project.stage === 'init' || !project.audioFile) {
+    // Show song picker (already visible by default)
+  } else if (scenes.length > 0) {
+    hideAllPanels();
+    $timelineContainer.style.display = 'block';
+    $('#storyboard-view').style.display = 'block';
+    renderStoryboardView();
+    setActiveToolBtn('btn-view-storyboard');
+  } else if (project.stylePrompt || project.styleAnchorImage) {
+    hideAllPanels();
+    $styleAnchor.style.display = 'block';
+    setActiveToolBtn('btn-style');
+  }
+});
 
 // Auto-load Suno songs on page load
 loadSunoSongs(0);
