@@ -1,0 +1,9 @@
+node_modules/
+project/audio.*
+project/clips/
+project/output/
+project/style-refs/*.png
+project/style-refs/*.jpg
+project/keyframes/*.png
+project/keyframes/*.jpg
+.DS_Store

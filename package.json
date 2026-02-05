@@ -1,0 +1,26 @@
+{
+  "name": "musicvid",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/williamsharkey/musicvid.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/williamsharkey/musicvid/issues"
+  },
+  "homepage": "https://github.com/williamsharkey/musicvid#readme",
+  "description": "Auto music video generator - Suno to synced video pipeline",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.19.0"
+  }
+}

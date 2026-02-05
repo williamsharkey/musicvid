@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>musicvid</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  overflow-x: hidden;
+}
+
+/* Top bar */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #111;
+  border-bottom: 1px solid #222;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+#topbar h1 { font-size: 14px; color: #888; font-weight: normal; }
+#topbar .song-title { color: #fff; font-weight: bold; }
+#topbar button {
+  background: #222;
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+#topbar button:hover { background: #333; color: #fff; }
+#stage-badge {
+  background: #1a3a1a;
+  color: #4a4;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+/* Setup panel */
+#setup-panel {
+  padding: 24px;
+  max-width: 600px;
+}
+#setup-panel h2 { font-size: 16px; margin-bottom: 16px; color: #aaa; }
+#setup-panel label { display: block; margin: 12px 0 4px; color: #888; font-size: 12px; }
+#setup-panel input, #setup-panel textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 13px;
+}
+#setup-panel textarea { min-height: 150px; resize: vertical; }
+#setup-panel .row { display: flex; gap: 12px; }
+#setup-panel .row > div { flex: 1; }
+
+/* Audio controls */
+#audio-bar {
+  padding: 8px 16px;
+  background: #0d0d0d;
+  border-bottom: 1px solid #1a1a1a;
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+#audio-bar audio { height: 28px; flex: 1; }
+#audio-bar .time { font-size: 11px; color: #666; min-width: 60px; }
+
+/* Timeline */
+#timeline-container {
+  padding: 16px;
+  display: none;
+}
+#timeline-label {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 6px;
+}
+#timeline {
+  display: flex;
+  align-items: stretch;
+  min-height: 60px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #222;
+  background: #0d0d0d;
+  position: relative;
+  cursor: default;
+}
+.segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 8px 4px;
+  border-right: 1px solid #333;
+  font-size: 11px;
+  color: #aaa;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.segment:hover { background: #1a1a1a; }
+.segment.selected { background: #1a2a3a; border-color: #2a5a8a; }
+.segment .seg-time {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  font-size: 9px;
+  color: #444;
+}
+.segment .seg-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status colors */
+.segment.status-pending { border-top: 2px solid #555; }
+.segment.status-prompted { border-top: 2px solid #a80; }
+.segment.status-generated { border-top: 2px solid #08a; }
+.segment.status-approved { border-top: 2px solid #0a0; }
+
+/* Detail panel */
+#detail-panel {
+  display: none;
+  padding: 16px;
+  border-top: 1px solid #222;
+  background: #0d0d0d;
+}
+#detail-panel h3 {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 8px;
+}
+#detail-panel .detail-row {
+  margin-bottom: 8px;
+}
+#detail-panel .detail-row label {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 2px;
+}
+#detail-panel .detail-row textarea,
+#detail-panel .detail-row input {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 12px;
+}
+#detail-panel .detail-row textarea { min-height: 60px; }
+#detail-panel .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+#detail-panel .actions button {
+  background: #222;
+  border: 1px solid #333;
+  color: #ccc;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+#detail-panel .actions button:hover { background: #333; }
+#detail-panel .actions button.primary {
+  background: #1a3a1a;
+  border-color: #2a5a2a;
+  color: #6c6;
+}
+#detail-panel .actions button.primary:hover { background: #2a4a2a; }
+
+/* Keyframe preview */
+#keyframe-preview {
+  margin-top: 12px;
+  max-width: 320px;
+}
+#keyframe-preview img {
+  max-width: 100%;
+  border: 1px solid #333;
+}
+
+/* Annotation bar */
+#annotation-bar {
+  padding: 8px 16px;
+  display: none;
+  background: #0a0a0a;
+  border-top: 1px solid #1a1a1a;
+}
+#annotation-bar textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  color: #e0e0e0;
+  padding: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  min-height: 40px;
+}
+
+/* Log */
+#log {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #444;
+  border-top: 1px solid #111;
+  max-height: 120px;
+  overflow-y: auto;
+}
+#log .entry { padding: 1px 0; }
+#log .entry.error { color: #a44; }
+#log .entry.info { color: #4a4; }
+
+/* Drop zone */
+#drop-zone {
+  border: 2px dashed #333;
+  padding: 24px;
+  text-align: center;
+  color: #555;
+  margin: 12px 0;
+  cursor: pointer;
+}
+#drop-zone.dragover { border-color: #666; color: #888; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>musicvid</h1>
+  <span class="song-title" id="song-title">—</span>
+  <button id="btn-setup">Setup</button>
+  <button id="btn-transcribe">Transcribe</button>
+  <button id="btn-storyboard">Storyboard</button>
+  <button id="btn-slice">Slice Scenes</button>
+  <button id="btn-prompts">Gen Prompts</button>
+  <button id="btn-stitch">Stitch</button>
+  <span id="stage-badge">init</span>
+</div>
+
+<div id="audio-bar">
+  <audio id="audio-player" controls></audio>
+  <span class="time" id="audio-time">0:00 / 0:00</span>
+</div>
+
+<div id="setup-panel">
+  <h2>Song Setup</h2>
+  <label>Song Title</label>
+  <input id="inp-title" placeholder="e.g. Midnight Horizon">
+  <div class="row">
+    <div>
+      <label>Artist</label>
+      <input id="inp-artist" placeholder="e.g. Suno AI">
+    </div>
+    <div>
+      <label>Style / Genre</label>
+      <input id="inp-style" placeholder="e.g. psychedelic rock, Indian fusion">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label>BPM (optional)</label>
+      <input id="inp-bpm" type="number" placeholder="120">
+    </div>
+    <div>
+      <label>Duration (seconds, optional)</label>
+      <input id="inp-duration" type="number" placeholder="180">
+    </div>
+  </div>
+  <label>Lyrics</label>
+  <textarea id="inp-lyrics" placeholder="Paste full lyrics here..."></textarea>
+  <label>Audio File</label>
+  <div id="drop-zone">Drop audio file here or click to select</div>
+  <input type="file" id="file-input" accept="audio/*" style="display:none">
+  <div style="margin-top:16px">
+    <button id="btn-save-setup" style="background:#1a3a1a;border:1px solid #2a5a2a;color:#6c6;padding:8px 24px;cursor:pointer;font-family:inherit">Save &amp; Continue</button>
+  </div>
+</div>
+
+<div id="timeline-container">
+  <div id="timeline-label">Timeline — click a segment to edit</div>
+  <div id="timeline"></div>
+</div>
+
+<div id="detail-panel">
+  <h3 id="detail-title">Segment</h3>
+  <div class="detail-row">
+    <label>Label</label>
+    <input id="detail-label">
+  </div>
+  <div class="detail-row">
+    <label>Description</label>
+    <textarea id="detail-desc"></textarea>
+  </div>
+  <div class="detail-row">
+    <label>Art Prompt</label>
+    <textarea id="detail-prompt"></textarea>
+  </div>
+  <div class="detail-row">
+    <label>Annotation (human notes)</label>
+    <textarea id="detail-annotation" placeholder="e.g. sounds like a sitar raga here"></textarea>
+  </div>
+  <div id="keyframe-preview"></div>
+  <div class="actions">
+    <button class="primary" id="btn-approve-seg">Approve</button>
+    <button id="btn-save-seg">Save</button>
+    <button id="btn-split-seg">Split Here</button>
+    <button id="btn-merge-seg">Merge Right</button>
+  </div>
+</div>
+
+<div id="log"></div>
+
+<script>
+// --- State ---
+let project = {};
+let scenes = [];
+let selectedIdx = -1;
+let ws = null;
+
+// --- DOM refs ---
+const $ = (sel) => document.querySelector(sel);
+const $timeline = $('#timeline');
+const $detail = $('#detail-panel');
+const $timelineContainer = $('#timeline-container');
+const $setupPanel = $('#setup-panel');
+const $audioBar = $('#audio-bar');
+const $audioPlayer = $('#audio-player');
+
+// --- WebSocket ---
+function connectWs() {
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => log('connected', 'info');
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'scenes-updated') loadScenes();
+    if (msg.type === 'project-updated') loadProject();
+  };
+  ws.onclose = () => { log('disconnected, reconnecting...'); setTimeout(connectWs, 2000); };
+}
+
+// --- API helpers ---
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`/api/${path}`, opts);
+  return res.json();
+}
+
+// --- Project ---
+async function loadProject() {
+  project = await api('GET', 'project');
+  $('#song-title').textContent = project.title || '—';
+  $('#stage-badge').textContent = project.stage || 'init';
+  $('#inp-title').value = project.title || '';
+  $('#inp-artist').value = project.artist || '';
+  $('#inp-style').value = project.style || '';
+  $('#inp-lyrics').value = project.lyrics || '';
+  $('#inp-bpm').value = project.bpm || '';
+  $('#inp-duration').value = project.duration || '';
+  if (project.audioFile) {
+    $audioBar.style.display = 'flex';
+    $audioPlayer.src = `/project/${project.audioFile}`;
+  }
+  if (project.stage && project.stage !== 'init') {
+    $setupPanel.style.display = 'none';
+    $timelineContainer.style.display = 'block';
+    loadScenes();
+  }
+}
+
+async function saveProject() {
+  project.title = $('#inp-title').value;
+  project.artist = $('#inp-artist').value;
+  project.style = $('#inp-style').value;
+  project.lyrics = $('#inp-lyrics').value;
+  project.bpm = parseInt($('#inp-bpm').value) || null;
+  project.duration = parseInt($('#inp-duration').value) || null;
+  await api('POST', 'project', project);
+  log('project saved', 'info');
+}
+
+// --- Scenes ---
+async function loadScenes() {
+  scenes = await api('GET', 'scenes');
+  renderTimeline();
+}
+
+async function saveScenes() {
+  await api('POST', 'scenes', scenes);
+  renderTimeline();
+}
+
+function renderTimeline() {
+  $timeline.innerHTML = '';
+  if (!scenes.length) {
+    // If no scenes yet but we have lyrics, show a placeholder
+    if (project.lyrics) {
+      buildInitialScenes();
+      return;
+    }
+    $timeline.innerHTML = '<div style="padding:16px;color:#555">No scenes yet. Set up song and click Transcribe.</div>';
+    return;
+  }
+
+  const totalDuration = scenes.reduce((s, sc) => s + (sc.end - sc.start), 0) || 1;
+  const containerWidth = Math.max(window.innerWidth - 32, totalDuration * 12);
+
+  scenes.forEach((sc, i) => {
+    const seg = document.createElement('div');
+    seg.className = `segment status-${sc.status || 'pending'}`;
+    const dur = sc.end - sc.start;
+    seg.style.width = `${Math.max(60, (dur / totalDuration) * containerWidth)}px`;
+    seg.innerHTML = `
+      <span class="seg-label">${sc.label || sc.description?.slice(0, 20) || `scene ${i + 1}`}</span>
+      <span class="seg-time">${fmtTime(sc.start)}-${fmtTime(sc.end)}</span>
+    `;
+    if (i === selectedIdx) seg.classList.add('selected');
+    seg.addEventListener('click', () => selectSegment(i));
+    $timeline.appendChild(seg);
+  });
+}
+
+function buildInitialScenes() {
+  // Create one big scene from lyrics as a starting point
+  const dur = project.duration || 180;
+  const lines = project.lyrics.split('\n').filter(l => l.trim());
+  const perLine = dur / lines.length;
+  scenes = lines.map((line, i) => ({
+    label: line.slice(0, 30),
+    description: line,
+    start: +(i * perLine).toFixed(2),
+    end: +((i + 1) * perLine).toFixed(2),
+    status: 'pending',
+    prompt: '',
+    annotation: ''
+  }));
+  saveScenes();
+}
+
+// --- Segment selection ---
+function selectSegment(idx) {
+  selectedIdx = idx;
+  const sc = scenes[idx];
+  if (!sc) return;
+  $detail.style.display = 'block';
+  $('#detail-title').textContent = `Scene ${idx + 1} — ${fmtTime(sc.start)} to ${fmtTime(sc.end)}`;
+  $('#detail-label').value = sc.label || '';
+  $('#detail-desc').value = sc.description || '';
+  $('#detail-prompt').value = sc.prompt || '';
+  $('#detail-annotation').value = sc.annotation || '';
+  // Show keyframe if exists
+  const kfDiv = $('#keyframe-preview');
+  if (sc.keyframe) {
+    kfDiv.innerHTML = `<img src="/project/keyframes/${sc.keyframe}" alt="keyframe">`;
+  } else {
+    kfDiv.innerHTML = '';
+  }
+  renderTimeline();
+
+  // Seek audio to segment start
+  if ($audioPlayer.src && !isNaN(sc.start)) {
+    $audioPlayer.currentTime = sc.start;
+  }
+}
+
+// --- Segment actions ---
+$('#btn-save-seg').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  scenes[selectedIdx].label = $('#detail-label').value;
+  scenes[selectedIdx].description = $('#detail-desc').value;
+  scenes[selectedIdx].prompt = $('#detail-prompt').value;
+  scenes[selectedIdx].annotation = $('#detail-annotation').value;
+  saveScenes();
+  log('segment saved', 'info');
+});
+
+$('#btn-approve-seg').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  scenes[selectedIdx].status = 'approved';
+  scenes[selectedIdx].label = $('#detail-label').value;
+  scenes[selectedIdx].description = $('#detail-desc').value;
+  scenes[selectedIdx].prompt = $('#detail-prompt').value;
+  scenes[selectedIdx].annotation = $('#detail-annotation').value;
+  saveScenes();
+  log(`scene ${selectedIdx + 1} approved`, 'info');
+});
+
+$('#btn-split-seg').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  const sc = scenes[selectedIdx];
+  const mid = (sc.start + sc.end) / 2;
+  const left = { ...sc, end: +mid.toFixed(2), label: sc.label + ' (a)' };
+  const right = { ...sc, start: +mid.toFixed(2), label: sc.label + ' (b)', status: 'pending', prompt: '' };
+  scenes.splice(selectedIdx, 1, left, right);
+  saveScenes();
+  log('segment split', 'info');
+});
+
+$('#btn-merge-seg').addEventListener('click', () => {
+  if (selectedIdx < 0 || selectedIdx >= scenes.length - 1) return;
+  const a = scenes[selectedIdx];
+  const b = scenes[selectedIdx + 1];
+  a.end = b.end;
+  a.label = a.label + ' + ' + b.label;
+  a.description = (a.description || '') + ' ' + (b.description || '');
+  a.status = 'pending';
+  scenes.splice(selectedIdx + 1, 1);
+  saveScenes();
+  log('segments merged', 'info');
+});
+
+// --- Setup ---
+$('#btn-save-setup').addEventListener('click', async () => {
+  await saveProject();
+  if (project.lyrics) {
+    project.stage = 'setup';
+    await api('POST', 'project', project);
+    $setupPanel.style.display = 'none';
+    $timelineContainer.style.display = 'block';
+    loadScenes();
+  }
+});
+
+$('#btn-setup').addEventListener('click', () => {
+  $setupPanel.style.display = $setupPanel.style.display === 'none' ? 'block' : 'none';
+});
+
+// --- Audio upload ---
+const dropZone = $('#drop-zone');
+const fileInput = $('#file-input');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  handleAudioFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => handleAudioFile(fileInput.files[0]));
+
+async function handleAudioFile(file) {
+  if (!file) return;
+  dropZone.textContent = `Uploading ${file.name}...`;
+  const res = await fetch('/api/upload-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file
+  });
+  const data = await res.json();
+  project.audioFile = data.path;
+  dropZone.textContent = `Uploaded: ${data.path}`;
+  $audioBar.style.display = 'flex';
+  $audioPlayer.src = `/project/${data.path}`;
+  log('audio uploaded', 'info');
+}
+
+// --- Audio time tracking ---
+$audioPlayer.addEventListener('timeupdate', () => {
+  const cur = $audioPlayer.currentTime;
+  const dur = $audioPlayer.duration || 0;
+  $('#audio-time').textContent = `${fmtTime(cur)} / ${fmtTime(dur)}`;
+
+  // Highlight current segment
+  if (scenes.length) {
+    const idx = scenes.findIndex(s => cur >= s.start && cur < s.end);
+    if (idx >= 0 && idx !== selectedIdx) {
+      // Just highlight, don't auto-select (too disruptive)
+      document.querySelectorAll('.segment').forEach((el, i) => {
+        el.classList.toggle('playing', i === idx);
+      });
+    }
+  }
+});
+
+// --- Pipeline buttons (stubs — these invoke CLI tools) ---
+$('#btn-transcribe').addEventListener('click', async () => {
+  log('Run: python3 pipeline/transcribe.py project/audio.mp3', 'info');
+  log('Then POST /api/timeline with the result', 'info');
+  alert('Run transcription from CLI:\n\npython3 pipeline/transcribe.py\n\nThis will use Whisper to generate word-level timestamps.');
+});
+
+$('#btn-storyboard').addEventListener('click', () => {
+  log('Run: node pipeline/storyboard.js', 'info');
+  alert('Run storyboard generation from CLI:\n\nnode pipeline/storyboard.js\n\nThis will use Claude to generate a storyboard arc.');
+});
+
+$('#btn-slice').addEventListener('click', () => {
+  // Auto-slice scenes to max 6 seconds
+  const maxDur = 6;
+  const newScenes = [];
+  for (const sc of scenes) {
+    const dur = sc.end - sc.start;
+    if (dur <= maxDur) {
+      newScenes.push(sc);
+    } else {
+      const n = Math.ceil(dur / maxDur);
+      const segDur = dur / n;
+      for (let i = 0; i < n; i++) {
+        newScenes.push({
+          ...sc,
+          start: +(sc.start + i * segDur).toFixed(2),
+          end: +(sc.start + (i + 1) * segDur).toFixed(2),
+          label: `${sc.label} (${i + 1}/${n})`,
+          status: 'pending',
+          prompt: ''
+        });
+      }
+    }
+  }
+  scenes = newScenes;
+  saveScenes();
+  log(`sliced to ${scenes.length} scenes (max ${maxDur}s each)`, 'info');
+});
+
+$('#btn-prompts').addEventListener('click', () => {
+  log('Run: node pipeline/gen-prompts.js', 'info');
+  alert('Run prompt generation from CLI:\n\nnode pipeline/gen-prompts.js\n\nThis will use Claude to generate art prompts for each scene.');
+});
+
+$('#btn-stitch').addEventListener('click', () => {
+  log('Run: node pipeline/stitch.js', 'info');
+  alert('Run stitching from CLI:\n\nnode pipeline/stitch.js\n\nThis will use ffmpeg to assemble clips into the final video.');
+});
+
+// --- Utilities ---
+function fmtTime(s) {
+  if (isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function log(msg, cls = '') {
+  const el = document.createElement('div');
+  el.className = `entry ${cls}`;
+  el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  $('#log').prepend(el);
+}
+
+// --- Init ---
+connectWs();
+loadProject();
+
+// Add playing style
+const style = document.createElement('style');
+style.textContent = '.segment.playing { background: #1a1a0a !important; }';
+document.head.appendChild(style);
+</script>
+</body>
+</html>
